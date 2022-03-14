@@ -1,0 +1,267 @@
+---
+title: "Data Analysis of the relation between vaccine and cases in United States after 2020"
+date: '03/08/2022'
+output: html_document
+---
+
+## Introduction 
+
+Since the beginning of 2020, the Covid-19 has become a problem for all human beings, and people's normal life has been greatly affected, not only causing physical damage, such as fever, coughing and difficulty in breathing, but also disrupting the rhythm of our lives, forcing people to spend less time going out and interacting with people face to face, and limiting people's living areas to their own homes. People all over the world are involved in the battle to fight and cure this disease, and many countries have made numerous studies and attempts to solve this major problem. In order to help the public have a clearer understanding of the Covid-19, we decided to do some basic data analysis and visualization of a data from WHO. 
+
+WHO COVID-19 data set records the number of Covid-19 infected cases and the number of death in 236 countries and states between January 3, 2020 and February 16, 2022. All data are collected equally and globally. There are 8 variables and 188652 observations. Specifically, "Date-report" is a set of dates sorted by time, recording the start time (01/03/2020) and the end time (02/16/2022) of the data in the set. "Country-Code" is the abbreviation for each country in the world, and "Country" is the whole name of a country in the world. "WHO-region" is a variable that represents the different regions of each country's location according to WHO criteria. "New-cases" indicates the number of increasing new cases of COVID-19 per day in these countries, while "Cumulative-cases" represents the cumulative new cases of COVID-19 in these countries from 01/03/2020 to the following date. "New-deaths" indicates the number of increasing dead cases of COVID-19 per day in these countries, while "Cumulative-deaths" represents the cumulative dead cases of COVID-19 in these countries from 01/03/2020 to the following date. There is another important variable that we need to consider, which is "death rate" from cumulative cases and cumulative deaths. 
+
+We decided to explore how the intensity of infection differed between regions, and after the end of 2020, as this is the period when vaccination becomes required around the world, so we also wanted to know if the vaccine could really help the overall infection especially in United States. Although studying new cases and deaths in other regions can also yield many new findings, but we live in the United States, we think it is more relevant to study the data from Americas, which includes the United States. Our objectives were to study the relation between vaccine and new cases, new deaths and changes in mortality in the United States for the period after December 2020. We suppose that vaccination could help decrease the number of new cases and the rate of death.  
+
+
+## WHO COVID-19 Data View and Vaccine related Data View
+
+```{r echo=TRUE, eval=TRUE}
+library(tidyverse)
+covid <- read_csv("https://covid19.who.int/WHO-COVID-19-global-data.csv")
+head(covid)
+dim(covid)
+```
+```{r}
+url <- "https://ourworldindata.org/covid-vaccinations"
+out_data <- read_csv("/Users/kouseiaki/Desktop/owid-covid-data.csv")
+head(out_data)
+```
+```{r}
+US_data <- filter(out_data,location == "United States")
+US_data
+
+begin_vac <- filter(US_data,date >= "2020-12-13")
+begin_vac
+```
+```{r}
+vac_US <- read_csv("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/vaccinations/country_data/United%20States.csv")
+vac_US
+```
+
+***
+## Background
+
+COVID-19 was so contagious that it was quickly becoming a global problem. People all round the world were struggling in this period. Since the outbreak of the COVID-19, daily increasings have been rising worldwide, and many countries are working tirelessly to research suitable solutions to alleviate the situation and cure the condition. 
+
+Since we live in the United States, we have chosen to narrow the global scope to the Americas so that we can better study the COVID-19 situation over this period of time. The Americas is a very important region not only for us to live in, but also in terms of the world, so we thought it would make sense to study the data from this region. Besides, the United States is also a good subject for study, not only because we live here and are more familiar and knowledgeable about the condition of COVID-19, but also because the United States has a global influence that cannot be ignored. WHO is the guiding and coordinating body for health issues within the United Nations system. It is responsible for developing the global health research agenda, setting norms and standards, providing technical support to countries, and monitoring and assessing health trends. The data we used is obtained from WHO, which is open, transparent and sufficiently convincing. 
+
+To date, governments have actively encouraged the public to get vaccinated, and according to the CDC literature on the subject, COVID-19 vaccines can indeed help protect us against disease. Since the end of 2020, the COVID-19 vaccine has been evaluated in clinical trials and has been approved by multiple studies and experiments, which have shown that the vaccine can significantly reduce the probability of contracting the virus.
+
+## Data Analysis
+
+```{r}
+covid <- covid %>% 
+  filter(WHO_region != "Other") %>% 
+  mutate(WHO_region = fct_recode(WHO_region,"Eastern Mediterranean"="EMRO","Europe" = "EURO","Africa" = "AFRO","Western Pacific" = "WPRO","Americas"="AMRO","South-East Asia" ="SEARO"))
+
+range(covid$Date_reported)
+length(unique(covid$Country))
+
+```
+
+```{r}
+library(moments)
+max(covid$New_cases)
+min(covid$New_cases)
+sd(covid$New_cases)
+median(covid$New_cases)
+kurtosis(covid$New_cases) 
+
+covid$Category[covid$New_cases <= 100] = "Low Infection"
+covid$Category[covid$New_cases >2000] = "Medium Infection"
+covid$Category[covid$New_cases > 10000] = "High Infection"
+
+covid$Category = factor(covid$Category,
+                    levels=c("Low Infection", "Medium Infection", "High Infection"))
+colors =c("#003F5C", "#86BCB6", "#B9CA5D")
+mytable1 <- table(covid$Category)
+lbls <- paste(names(mytable1), "\n", mytable1, sep="")
+pie(mytable1, labels = lbls,
+   main="Pie Chart of New Cases around World",col=colors)
+```
+
+From the pie chart, we can find that most of countries have been able to stay below 500 new cases per day.
+
+
+```{r}
+overall_death_rate <- covid$Cumulative_deaths/covid$Cumulative_cases
+summary(overall_death_rate)
+summary(covid$New_cases)
+summary(covid$Cumulative_cases)
+summary(covid$Cumulative_deaths)
+summary(covid$New_cases)
+```
+
+```{r}
+new_data <- filter(covid, Country == "United States of America")
+ggplot(data = new_data, 
+       mapping = aes(x = Date_reported, y = New_cases)) + geom_line()
+```
+
+We can see that at the beginning of the outbreak, the increase in the number of daily new cases in the United States was a flat trend without a very significant increase, but from January 2021, there was a small peak in the number of new cases, which, in the context of the situation at that time, could be due to the gradual opening of the quarantine policy, such as people slowly return to their normal standard of living and the movement of people will be enhanced compared to the previous period. And after January, because the government encouraged people to get vaccinated, we guess that the trend of declining new cases during this period was due to the vaccine. The spike in new cases in early 2022 is due to the mutation of the virus, omicron.
+
+
+```{r}
+new_data <- filter(new_data,Cumulative_cases != 0)
+US_death_rate <- new_data$Cumulative_deaths/new_data$Cumulative_cases
+ggplot(data = new_data, 
+       mapping = aes(x = Date_reported, y = US_death_rate)) + geom_line()
+```
+
+
+From the plot we can see that at the beginning of the outbreak, because people are not aware of the COVID-19, so the death rate in the United States during this period is the highest, after the death rate has a plunge, but in the middle of 2020 there was a peak value of the death rate, combined with the previous graph we can see that the new cases during this period is also gradually rising, showing an upward trend. And from July 2020, the mortality rate gradually starts to decline, and from a rapid decline at the beginning to a gentle decline afterwards, as the government encourages people to get vaccinated from the end of 2020, so we reasonably presume that vaccination can reduce the mortality rate.
+
+```{r}
+vac_death_rate <- begin_vac$total_deaths/begin_vac$total_cases
+fig.scatter.1 <-ggplot(data = begin_vac, 
+       mapping = aes(x = date, y = vac_death_rate)) + geom_line()
+fig.scatter.2 <- new_data %>% 
+  filter(Date_reported >= "2020-01-03",Date_reported<= "2020-12-13") %>% 
+  ggplot(data = new_data, 
+       mapping = aes(x = Date_reported, y = US_death_rate)) + geom_line()
+
+gridExtra::grid.arrange(fig.scatter.1, fig.scatter.2, nrow=1, ncol=2)
+
+```
+
+```{r}
+fig.scatter.3 <-ggplot(data = begin_vac, 
+       mapping = aes(x = date, y = total_cases)) + geom_line()
+fig.scatter.4 <- new_data %>% 
+  filter(Date_reported >= "2020-01-03",Date_reported<= "2020-12-13") %>% 
+  ggplot(data = new_data, 
+       mapping = aes(x = Date_reported, y = Cumulative_cases)) + geom_line()
+
+gridExtra::grid.arrange(fig.scatter.3, fig.scatter.4, nrow=1, ncol=2)
+```
+
+As we can see from the above two sets of graphs, the mortality rate decreases significantly from the start of the COVID-19 vaccine, while a sharp downward trend is observed at the end of 2021. We can also see from the new cases that since the vaccination, the rise in new cases has gradually decreased, which means the slope of "date vs total cases" is becoming flatter. Therefore, our hypothesis that vaccination reduces mortality and decreases new cases is likely to be valid.
+
+
+## Predictive Analysis
+
+Assume that the model in this case is Y = beta_0 + beta_1 * X1 + beta_2 * X2 + beta_3 * X3 + error, when Y is cumulative cases, X1 is new cases, X2 is total deaths, and X3 is total vaccined number. Total_cases = new_cases + total_deaths + poeple_vaccinated. 
+
+Null hypothesis: Vaccine does not affect the number of total cases.
+
+Alternative hypothesis: the number of people get vaccination is a factor that can affect the number of COVID-19 total cases.
+
+
+```{r}
+library(glmnet)
+library(MASS)
+library(caret)
+library(leaps)
+p = 4
+models <-  regsubsets(total_cases~new_cases + total_deaths + people_vaccinated, data = begin_vac, nvmax = p-1)
+summary(models)
+result.sum = summary(models)
+criteria = data.frame( Nvar = 1:(p-1), R2adj = result.sum$adjr2, CP = result.sum$cp, BIC = result.sum$bic)
+criteria
+which.best.subset = data.frame(R2adj = which.max(result.sum$adjr2), CP = which.min(result.sum$cp),BIC = which.min(result.sum$bic))
+which.best.subset
+```
+
+Based on the model selection, BIC is a criterion for model selection among a finite set of models, as the complexity of the model increases, the value of BIC increases and as likelihood increases, and models with lower BIC are generally preferred. As the result we have above, when considering the new_cases, total_death and people_vaccinated, the value of BIC is -1336.808, which is the smallest for three variables. 
+
+```{r}
+Full_model <- lm(total_cases ~ new_cases + total_deaths + people_vaccinated, data = begin_vac)
+backward <-  step(Full_model, direction="backward", scope=formula(Full_model), trace=0)
+backward$anova
+```
+```{r}
+Empty_model <- lm(total_cases ~ 1, data = begin_vac) 
+forward = step(Empty_model, direction="forward", scope=formula(Full_model), trace=0)
+forward$anova
+```
+```{r}
+both <- step(Empty_model, direction="both", scope=formula(Full_model), trace=0)
+both$anova
+```
+
+
+```{r}
+model1 <- lm(total_cases ~ new_cases + total_deaths + people_vaccinated, data = begin_vac)
+summary(model1)
+model1$coefficients
+```
+
+```{r}
+confint(model1, 'people_vaccinated', level=0.99)
+```
+
+```{r}
+pred1 = predict(model1, data = begin_vac)
+accuracy1 <- table(pred1, begin_vac$total_cases)
+sum(diag(accuracy1))/sum(accuracy1)
+```
+```{r}
+model2 <- lm(total_cases ~ new_cases + total_deaths, data = begin_vac)
+summary(model2)
+```
+
+```{r}
+pred2 = predict(model2, data = begin_vac)
+accuracy2 <- table(pred2, begin_vac$total_cases)
+sum(diag(accuracy2))/sum(accuracy2)
+```
+
+```{r}
+anova(model1,model2)
+```
+
+Because our goal is to determine whether vaccination has an effect on the number of total COVID-19 cases or not, then our model1 is the alternative hypothesis, which we assume that there is a negative correlation between the total number of cases and the number of people who get vaccinated, meaning that the more people who get vaccinated, the fewer the total cases in United States. Here are a few sets of data that can be used as judgment criteria, starting with Intercept in model1, we can find that the intercept of people_vaccinated is -9.451778e-02. Then we can say that our assumption is valid. We assume that alpha = 0.01. By calculating the confidence interval for the intercept parameter beta_3, we get the CI is (-0.1082912,-0.0807444). Therefore, the interval has a probability of 99% to contain the true value of beta_3 . So in 99% of all samples that could be drawn, the confidence interval will cover the true value of beta_3. 
+
+Secondly, model2 is the reduced(null) hypothesis, which we assume that people_vaccinated is not an affectable variable for the total cases of COVID-19 in United States. By comparing the model1 and mode2, we find the misClassError of each model, for model1 is 0.2022222, while for model2 is 0.2155556. As we know that, misclasserror is the proportion of observations that were not predicted correctly, hence the smaller the value of misclasserror the model have, the better the model would be. Since model1 has a smaller misclasserror, model1 is better than model2. What's more, considering thr ANOVA of model1 and model2, and our alpha = 0.01, we get P-value < 2.2e-16, which is much smaller than 0.01, therefore, we have 99% confidence to say that we reject the null hypothesis, which means the number of people vaccinated is a factor that influences the total number of cases, and with the intercept of beta_3 we can conclude that this influence is negatively correlated with the total_cases. 
+
+
+## Model diagnostics and sensitivity analysis
+
+```{r}
+par(mfrow=c(2,2))
+plot(model1)
+```
+
+From the residuals vs fitted plot, we can conclude that the relation between total cases and new cases, total deaths  and people vaccinated is not linear, since the spread of the residuals is not about the same, and they are not close to centered at zero either. 
+
+From the QQ plot, we see that most of dots that are located at the straight dashed line, but still some dots are not, hence we can conclude that the data set may exist some errors, if we remove these errors, we would have almost all dots are located on the dashed line, then we can conclude that the data is normally distrusted. 
+
+From scaled-location plot, we see that most of the dots fall at the beginning of the dashed line and are not evenly distributed around the it, the residuals are also not randomly scattered around the red line with roughly equal variability at all fitted values, so we get that we would have a heteroscedasticity problem. 
+
+From the residual vs leverage plot, we see that there are some dots that falls outside of the red dashed lines. This indicates that they are influential points. However, we can still notice that most of the observations do not located in the cook's distance. 
+
+Since the model we chose still has some problems as seen in the figure above, I think there may be crossed factor or other factors that can also affect the total cases of Covid-19. As we know, get vaccination not only can decrease the number of new cases, but also can reduce the death rate. For reasonable guesses, we decided to view new cases and  people vaccinated as a crossed factor. 
+
+```{r}
+model3 <- lm(total_cases ~ new_cases*people_vaccinated + new_deaths*people_vaccinated, data = begin_vac)
+par(mfrow=c(2,2))
+plot(model3)
+```
+
+We can find from the new diagnostics plot that, from residuals vs fitted plot, the residuals spread more diagnostics along the red line and the center is also closer to zero. For QQ plot, the first half of the dots fall nicely on the dash line, while the second half has a large deviation, so afterwards we still need to reconsider the choice of samples and observation subjects.
+
+
+
+## Conclusion and further research 
+
+In the study on exploring whether vaccination has an effect on the total number of cases of COVID-19, from the data visualization we found that the mortality rate decreases significantly from the start of the COVID-19 vaccine, while a sharp downward trend is observed at the end of 2021. We can also see from the new cases that since the vaccination, the rise in new cases has gradually decreased, which means the slope of "date vs total cases" is becoming flatter. 
+
+We assume that there is a negative correlation between the total number of cases and the number of people get vaccinated in United States. From the data we obtained during the modeling process, from the Intercept in model1, we can find that the intercept of people_vaccinated is -9.451778e-02. Then we can say that our hypothesis is valid. We assume that alpha = 0.01. By calculating the confidence interval for the intercept parameter beta_3, we obtain a CI of (-0.1082912, -0.0807444). Thus, the probability that the interval contains the true value of beta_3 is 99%. Therefore, 99% of the confidence intervals will cover the true value of beta_3 in all samples that can be plotted.
+
+Second, Model 2 is the reduced hypothesis, and we assume that people_vaccinated is not an influential variable for total US COVID-19 cases. Considering the ANOVA of model 1 and model 2, and our alpha = 0.01, we obtain a p-value < 2.2e-16, much less than 0.01, therefore, we have 99% confidence that we reject the original hypothesis, which implies that the number of people vaccinated is a factor affecting the total number of cases, and with the beta_3 intercept, we can conclude that this effect is negatively related to total_cases is negatively correlated.
+
+In conclusion, from the above analysis, we can conclude that vaccination is indeed able to influence the number of confirmed cases in the United States, and that the more people are vaccinated, the slower the increase in new cases. However, because our study is very superficial, in order to be able to obtain more appropriate results, we believe that it is not enough to consider only the number of people who received the vaccine, and in subsequent studies, either to explore the number of people who received only one dose of the vaccine or the number of people who received a booster, they all can be the factors that may influence the number of cases in the United States. 
+
+
+## Reference
+
+vaccine_information <- https://en.wikipedia.org/wiki/COVID-19_vaccine 
+
+vaccine_track <- "https://ourworldindata.org/covid-vaccinations"
+
+Benefits_of_COVID_19_Vaccine <- https://www.cdc.gov/coronavirus/2019-ncov/vaccines/vaccine-benefits.html
+
+
+
+
+
